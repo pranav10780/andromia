@@ -88,7 +88,7 @@ def get_latest_health():
     if ucla_total >= 6: 
         alerts.append("Elevated isolation detected. Schedule a real-time comms link with Earth or engage in crew recreation.")
     if metrics["t_score"] <= -1.0:
-        alerts.append("Bone mass degradation detected. Increase resistance training protocol on ARED by 20 minutes daily.")
+        alerts.append("Bone mass degradation detected. Increase resistance training by 20 minutes daily.")
     if metrics["effective_dose"] > 50:
         alerts.append("High radiation dose. Verify solar flare activity and retreat to shielded quarters.")
 
@@ -126,4 +126,4 @@ def serve_frontend():
     return app.send_static_file('index.html')
 
 if __name__ == '__main__':
-    app.run(port=8080, debug=True)
+    app.run(port=8080,debug=True)
