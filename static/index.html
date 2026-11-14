@@ -3,139 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Artemis Health Co-Pilot</title>
+    <title>NASA Artemis Health Co-Pilot</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {		
+        body {
             font-family: 'Courier New', Courier, monospace;
-            background-color: #f8fafc; /* Very light gray/blue */
-            color: #0f172a; /* Dark text for high readability */
+            background-color: #f8fafc;
+            color: #0f172a;
             padding: 20px;
-            max-width: 500px;
+            margin: 0;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-gap: 20px;
+            max-width: 1000px;
             margin: 0 auto;
-	    }
-	    .card {
-            background-color: #ffffff; /* Solid white */
+        }
+        .panel {
+            background-color: #ffffff;
             padding: 20px;
             border-radius: 8px;
-            border: 1px solid #e2e8f0; 
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); /* Subtle shadow for depth */
-            margin-bottom: 20px;
-	    }
-	    label { 
-            display: block; 
-            margin-bottom: 5px; 
-            color: #475569; 
-            font-weight: 600;
-	    }
-	    input {
-            width: 100%; 
-            padding: 10px; 
-            margin-bottom: 15px;
-            background-color: #f8fafc; 
-            color: #0f172a;
-            border: 1px solid #cbd5e1; 
-            border-radius: 4px; 
-            box-sizing: border-box;
-	    }
-	    input:focus {
-            outline: none;
-            border-color: #2563eb;
-	    }
-	    button {
-            width: 100%; 
-            padding: 12px;
-            background-color: #2563eb; 
-            color: white;
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-weight: bold;
-	    }
-	    button:hover { background-color: #1d4ed8; }
-	    button.secondary { 
-            background-color: #e2e8f0; 
-            color: #334155; 
-            margin-top: 15px; 
-	    }
-	    button.secondary:hover { background-color: #cbd5e1; }
-	    
-	    .metric-group { margin-bottom: 15px; }
-	    meter { width: 100%; height: 20px; }
-	    .alert-box {
-            padding: 15px; 
-            border-radius: 4px; 
-            margin-top: 15px;
-            background-color: #fee2e2;
-            border: 1px solid #ef4444; 
-            color: #991b1b;
-            display: none;
-	    }
-	</style>
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+        .top-row { grid-column: 1 / 3; } /* Spans the whole top */
+        .bottom-left { grid-column: 1 / 2; }
+        .bottom-right { grid-column: 2 / 3; }
+
+        h2, h3 { margin-top: 0; color: #1e293b; }
+        
+        /* Alerts Styling */
+        #alerts-list { padding-left: 20px; color: #991b1b; }
+        .alert-item { margin-bottom: 10px; font-weight: bold; }
+        .no-alerts { color: #15803d; font-weight: bold; list-style: none; padding: 0; }
+
+        /* Metrics Styling */
+        .metric { font-size: 1.2em; margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+        .metric span { font-weight: bold; color: #2563eb; float: right; }
+
+        /* Button & Modal */
+        .add-btn {
+            display: block; width: 200px; margin: 0 auto 20px auto; padding: 15px;
+            background-color: #2563eb; color: white; text-align: center;
+            border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+        }
+        .add-btn:hover { background-color: #1d4ed8; }
+        
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 8px; width: 400px;
+            max-height: 80vh; overflow-y: auto;
+        }
+        
+        /* Form Inputs */
+        label { display: block; margin: 10px 0 5px 0; font-weight: bold; font-size: 0.9em; }
+        input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 4px; }
+        .form-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .form-btns button { flex: 1; padding: 10px; cursor: pointer; border: none; border-radius: 4px; font-weight: bold;}
+        .submit-btn { background-color: #2563eb; color: white; }
+        .cancel-btn { background-color: #94a3b8; color: white; }
+		.charts-container { display: flex; gap: 20px; flex-wrap: wrap; }
+		.chart-box { flex: 1; min-width: 300px; }
+    </style>
 </head>
 <body>
+    <div class="dashboard">
+		<!-- TOP: The Graphs -->
+		<div class="panel top-row">
+			<div class="charts-container">
+				<!-- Chart for High Numbers -->
+				<div class="chart-box">
+					<h3>Vitals & Radiation</h3>
+					<canvas id="highChart" height="150"></canvas>
+				</div>
+				
+				<!-- Chart for Low Numbers -->
+				<div class="chart-box">
+					<h3>Physiology & Wellness</h3>
+					<canvas id="lowChart" height="150"></canvas>
+				</div>
+			</div>
+		</div>
 
-    <h2>Health Co-Pilot</h2>
+        <!-- BOTTOM LEFT: The Alerts -->
+        <div class="panel bottom-left">
+            <h3>Active Diagnostics</h3>
+            <ul id="alerts-list">
+                <!-- Alerts get injected here -->
+            </ul>
+        </div>
 
-    <!-- The form -->
-    <div id="input-view" class="card">
-        <form id="healthForm">
-            <label>Systolic BP (mmHg):</label>
-            <input type="number" id="systolic" required>
-
-            <label>Diastolic BP (mmHg):</label>
-            <input type="number" id="diastolic" required>
-
-            <label>Sleep (Hours):</label>
-            <input type="number" id="sleep" step="0.1" required>
-
-            <label>Mood (1-10):</label>
-            <input type="number" id="mood" min="1" max="10" required>
-
-            <button type="submit">Analyze Health Data</button>
-        </form>
+        <!-- BOTTOM RIGHT: Latest Numbers -->
+        <div class="panel bottom-right">
+            <h3>Latest Telemetry</h3>
+            <div class="metric">Systolic BP: <span id="val-sys">--</span></div>
+            <div class="metric">Diastolic BP: <span id="val-dia">--</span></div>
+            <div class="metric">Sleep Logged: <span id="val-sleep">--</span> hrs</div>
+            <div class="metric">Bone T-Score: <span id="val-bone">--</span></div>
+            <div class="metric">UCLA Isolation Score: <span id="val-ucla">--</span></div>
+        </div>
     </div>
+    <button class="add-btn" onclick="openModal()">+ Log New Health Data</button>
 
-    <!-- The dashboard -->
-    <div id="dashboard-view" class="card" style="display: none;">
-        <h3>Live Diagnostics</h3>
-        
-        <div class="metric-group">
-            <label>Systolic Blood Pressure: <span id="sys-val">--</span></label>
-            <meter id="sys-meter" min="80" max="200" low="90" high="130" optimum="110" value="0"></meter>
+    <!-- The Data Entry Form (Hidden by default) -->
+    <div id="dataModal" class="modal">
+        <div class="modal-content">
+            <h3>Log Telemetry</h3>
+            <form id="healthForm">
+                <label>Systolic BP (mmHg)</label><input type="number" id="sys" required>
+                <label>Diastolic BP (mmHg)</label><input type="number" id="dia" required>
+                <label>Sleep (Hours)</label><input type="number" id="sleep" step="0.1" required>
+                <label>Radiation Dose (mSv)</label><input type="number" id="rad" step="0.1" required>
+                <label>Bone Density T-Score</label><input type="number" id="bone" step="0.1" required>
+                <label>UCLA Q1 (1-3)</label><input type="number" id="u1" min="1" max="3" required>
+                <label>UCLA Q2 (1-3)</label><input type="number" id="u2" min="1" max="3" required>
+                <label>UCLA Q3 (1-3)</label><input type="number" id="u3" min="1" max="3" required>
+                
+                <div class="form-btns">
+                    <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="submit-btn">Save</button>
+                </div>
+            </form>
         </div>
-
-        <div class="metric-group">
-            <label>Sleep Logged: <span id="sleep-val">--</span> hrs</label>
-            <meter id="sleep-meter" min="0" max="12" low="6" high="10" optimum="8" value="0"></meter>
-        </div>
-
-        <div id="action-alert" class="alert-box">
-            <strong>Action Required:</strong>
-            <p id="action-text"></p>
-        </div>
-
-        <button class="secondary" onclick="showInputForm()">← Log New Data</button>
     </div>
 
     <script>
-        const inputView = document.getElementById('input-view');
-        const dashboardView = document.getElementById('dashboard-view');
-        const form = document.getElementById('healthForm');
+        // Modal Logic
+        const modal = document.getElementById('dataModal');
+        function openModal() { modal.style.display = 'flex'; }
+        function closeModal() { modal.style.display = 'none'; }
 
-        function showInputForm() {
-            dashboardView.style.display = 'none';
-            inputView.style.display = 'block';
-            form.reset();
-        }
+		let highChart, lowChart;
 
-        form.addEventListener('submit', async function(event) {
-            event.preventDefault(); 
+        // Handle Form Submission
+        document.getElementById('healthForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
             
             const payload = {
-                systolic_bp: parseInt(document.getElementById('systolic').value),
-                diastolic_bp: parseInt(document.getElementById('diastolic').value),
+                systolic_bp: parseInt(document.getElementById('sys').value),
+                diastolic_bp: parseInt(document.getElementById('dia').value),
                 sleep_hours: parseFloat(document.getElementById('sleep').value),
-                mood_score: parseInt(document.getElementById('mood').value)
+                effective_dose: parseFloat(document.getElementById('rad').value),
+                t_score: parseFloat(document.getElementById('bone').value),
+                ucla_1: parseInt(document.getElementById('u1').value),
+                ucla_2: parseInt(document.getElementById('u2').value),
+                ucla_3: parseInt(document.getElementById('u3').value)
             };
 
             await fetch('/api/log', {
@@ -144,33 +160,95 @@
                 body: JSON.stringify(payload)
             });
 
-            inputView.style.display = 'none';
-            dashboardView.style.display = 'block';
-
-            loadDashboardData();
+            document.getElementById('healthForm').reset();
+            closeModal();
+            refreshDashboard();
         });
 
-        async function loadDashboardData() {
-            const response = await fetch('/api/health/latest');
-            const data = await response.json();
-            const metrics = data.metrics;
+        // Pull data and update UI
+        async function refreshDashboard() {
+            // 1. Update Latest Numbers & Alerts
+            const latestRes = await fetch('/api/health/latest');
+            if (latestRes.ok) {
+                const data = await latestRes.json();
+                
+                // Update numbers
+                document.getElementById('val-sys').textContent = data.metrics.systolic_bp;
+                document.getElementById('val-dia').textContent = data.metrics.diastolic_bp;
+                document.getElementById('val-sleep').textContent = data.metrics.sleep_hours;
+                document.getElementById('val-bone').textContent = data.metrics.t_score;
+                document.getElementById('val-ucla').textContent = data.ucla_total;
 
-	    document.getElementById('sys-val').textContent = metrics.systolic_bp;
-            document.getElementById('sleep-val').textContent = metrics.sleep_hours;
+                // Update alerts list
+                const alertList = document.getElementById('alerts-list');
+                alertList.innerHTML = ''; // Clear old alerts
+                
+                if (data.alerts.length === 0) {
+                    alertList.innerHTML = '<li class="no-alerts">All systems nominal. No actions required.</li>';
+                } else {
+                    data.alerts.forEach(alert => {
+                        const li = document.createElement('li');
+                        li.className = 'alert-item';
+                        li.textContent = "⚠️ " + alert;
+                        alertList.appendChild(li);
+                    });
+                }
+            }
 
-            document.getElementById('sys-meter').value = metrics.systolic_bp;
-            document.getElementById('sleep-meter').value = metrics.sleep_hours;
+			// 2. Update the Charts
+			const historyRes = await fetch('/api/health/history');
+			if (historyRes.ok) {
+				const history = await historyRes.json();
+				
+				const labels = history.map((_, index) => `Log ${index + 1}`);
+				
+				// Extract arrays for every metric
+				const bpSysData = history.map(row => row.systolic_bp);
+				const bpDiaData = history.map(row => row.diastolic_bp);
+				const radData = history.map(row => row.effective_dose);
+				
+				const sleepData = history.map(row => row.sleep_hours);
+				const boneData = history.map(row => row.t_score);
+				const uclaData = history.map(row => row.ucla_total);
 
-            const alertBox = document.getElementById('action-alert');
-            const alertText = document.getElementById('action-text');
-            
-	    if (data.alert) {
-		alertBox.style.display = 'block';
-		alertText.textContent = data.alert;
-	    } else {
-		alertBox.style.display = 'none';
-	    }	
+				// Destroy old charts if they exist
+				if (highChart) highChart.destroy(); 
+				if (lowChart) lowChart.destroy();
+
+				// Render High Scale Chart (BP & Radiation)
+				const ctxHigh = document.getElementById('highChart').getContext('2d');
+				highChart = new Chart(ctxHigh, {
+					type: 'line',
+					data: {
+						labels: labels,
+						datasets: [
+							{ label: 'Systolic BP', data: bpSysData, borderColor: '#ef4444', tension: 0.3 },
+							{ label: 'Diastolic BP', data: bpDiaData, borderColor: '#f97316', tension: 0.3 },
+							{ label: 'Radiation (mSv)', data: radData, borderColor: '#eab308', tension: 0.3 }
+						]
+					},
+					options: { responsive: true }
+				});
+
+				// Render Low Scale Chart (Sleep, Bone, UCLA)
+				const ctxLow = document.getElementById('lowChart').getContext('2d');
+				lowChart = new Chart(ctxLow, {
+					type: 'line',
+					data: {
+						labels: labels,
+						datasets: [
+							{ label: 'Sleep (hrs)', data: sleepData, borderColor: '#3b82f6', tension: 0.3 },
+							{ label: 'Bone T-Score', data: boneData, borderColor: '#8b5cf6', tension: 0.3 },
+							{ label: 'UCLA Score', data: uclaData, borderColor: '#10b981', tension: 0.3 }
+						]
+					},
+					options: { responsive: true }
+				});
+			}
         }
+
+        // Load data when page opens
+        window.onload = refreshDashboard;
     </script>
 </body>
 </html>
